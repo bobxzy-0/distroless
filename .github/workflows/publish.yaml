@@ -1,0 +1,93 @@
+name: Publish Images
+
+# Automatically build all distroless images and push them to Google Container
+# Registry (GCR) on every push to main. Can also be triggered manually.
+#
+# Required repository configuration (Settings → Secrets and variables):
+#
+#   Secrets:
+#     GCP_PROJECT_ID            – GCP project that owns the target registry.
+#                                 Example: my-project-123456
+#     GCP_WORKLOAD_IDENTITY_PROVIDER – Full resource name of the Workload
+#                                 Identity Pool Provider used for keyless
+#                                 authentication. Example:
+#                                 projects/123456/locations/global/workloadIdentityPools/my-pool/providers/my-provider
+#     GCP_SERVICE_ACCOUNT       – Service account email that has write access
+#                                 to the registry. Example:
+#                                 ci-publisher@my-project-123456.iam.gserviceaccount.com
+#     COSIGN_KEYLESS_EMAIL      – Service account email passed to cosign for
+#                                 keyless signing. Usually the same value as
+#                                 GCP_SERVICE_ACCOUNT.
+#
+# The workflow uses Workload Identity Federation so that no long-lived
+# credentials are stored in the repository. See RELEASES.md for the full
+# setup guide.
+
+on:
+  workflow_dispatch: # Allow manual runs.
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: read
+  id-token: write # Required for Workload Identity Federation OIDC token.
+
+jobs:
+  publish:
+    name: Build and publish to GCR
+    runs-on: distroless-ci-large-ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v6
+
+      # ── Bazel cache ────────────────────────────────────────────────────────
+      - name: Mount bazel caches
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/bazel-repo
+          key: bazel-cache-deps-publish-${{ github.sha }}
+          restore-keys: |
+            bazel-cache-deps-publish-${{ github.sha }}
+            bazel-cache-deps-publish-
+
+      # ── Authenticate to GCP via Workload Identity Federation ───────────────
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      # ── Configure Docker credential helper for GCR ─────────────────────────
+      - name: Configure Docker credentials for GCR
+        run: gcloud auth configure-docker --quiet
+
+      # ── Fetch all Bazel external dependencies ──────────────────────────────
+      - name: Fetch dependencies
+        run: |
+          for i in $(seq 10); do
+            bazel --bazelrc=$GITHUB_WORKSPACE/.github/workflows/ci.bazelrc fetch //... && break || sleep 180;
+          done
+
+      # ── Build all OCI images ───────────────────────────────────────────────
+      - name: Build all images
+        run: |
+          targets=$(bazel query 'kind(oci_image, deps(:sign_and_push))')
+          bazel --bazelrc=$GITHUB_WORKSPACE/.github/workflows/ci.bazelrc build $targets
+        env:
+          PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+
+      # ── Sign and push every image to GCR ──────────────────────────────────
+      # The :sign_and_push Bazel target (see BUILD and private/oci/sign_and_push.bzl)
+      # uses crane to push each image and cosign to sign it keylessly.
+      # PROJECT_ID and REGISTRY are consumed by private/stamp.bash to resolve
+      # the {REGISTRY}/{PROJECT_ID}/… image references in BUILD.
+      - name: Push and sign all images
+        run: |
+          bazel --bazelrc=$GITHUB_WORKSPACE/.github/workflows/ci.bazelrc \
+            run :sign_and_push --config=release -- \
+            --keyless ${{ secrets.COSIGN_KEYLESS_EMAIL }}
+        env:
+          PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+          REGISTRY: gcr.io
+          COMMIT_SHA: ${{ github.sha }}

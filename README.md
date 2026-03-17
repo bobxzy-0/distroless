@@ -310,6 +310,12 @@ After modifying any `*.yaml` package manifest under `common/` or `private/repos/
 
 For more details on contributing, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
+### Publish images to Google Container Registry
+
+Once images build successfully, you can push them to a GCR repository automatically from GitHub Actions. The [publish workflow](.github/workflows/publish.yaml) triggers on every push to `main` and runs `bazel run :sign_and_push --config=release` to push and sign all images.
+
+See [RELEASES.md](RELEASES.md) for the complete setup guide (GCP Workload Identity Federation, service account, and required GitHub secrets).
+
 ## Community Discussion
 
 - [distroless-users Google Group](https://groups.google.com/forum/#!forum/distroless-users)

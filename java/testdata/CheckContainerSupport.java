@@ -5,7 +5,8 @@ package testdata;
  * (-XX:+UseContainerSupport, enabled by default in JDK 8u191+).
  *
  * <p>When UseContainerSupport is active the JVM reads cgroup limits (both
- * cgroup v1 and cgroup v2) and sizes heap / CPU quota accordingly.
+ * cgroup v1 and cgroup v2) and sizes heap and sets available processors
+ * based on CPU quota accordingly.
  *
  * <p>cgroup v1 support: JDK 8u191+
  * <p>cgroup v2 support: JDK 11.0.14+ / JDK 17.0.2+ / JDK 8u372+ (Temurin)

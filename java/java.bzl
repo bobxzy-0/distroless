@@ -283,3 +283,22 @@ def java_tests(distro, java_version, arch):
                     "manual",
                 ],
             )
+
+        for user in USERS:
+            oci_java_image(
+                name = "check_container_support_java" + java_version + "_" + user + "_" + distro,
+                srcs = ["testdata/CheckContainerSupport.java"],
+                base = "//java:java" + java_version + "_" + user + "_amd64_" + distro,
+                main_class = "testdata.CheckContainerSupport",
+            )
+
+        for user in USERS:
+            container_structure_test(
+                name = "check_container_support_java" + java_version + "_" + user + "_" + distro + "_test",
+                configs = ["testdata/java_container_support.yaml"],
+                image = ":check_container_support_java" + java_version + "_" + user + "_" + distro,
+                tags = [
+                    "amd64",
+                    "manual",
+                ],
+            )

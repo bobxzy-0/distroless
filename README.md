@@ -247,6 +247,8 @@ sudo curl -fsSL https://github.com/bazelbuild/bazelisk/releases/latest/download/
 
 Bazelisk will automatically download the correct Bazel version declared in the repository.
 
+You also need [Docker](https://docs.docker.com/get-started/get-docker/) if you want to load a built image into your local Docker daemon or run the image test suite.
+
 ### Build all images
 
 ```sh
@@ -299,6 +301,37 @@ docker run --rm distroless/static-debian13:local
 ```
 
 This runs all tests tagged for the current host architecture (e.g. `amd64`). A plain `bazel test //...` will **not** run all tests because many are tagged `manual`.
+
+To run the tests for a single image, pass the target label directly to `bazel test`, for example:
+
+```sh
+# Run the amd64 static-debian13 image test
+bazel test //static:static_root_amd64_debian13_test
+```
+
+You can discover all test targets with:
+
+```sh
+bazel query 'kind(container_test, //...)'
+```
+
+### Lint Bazel files
+
+```sh
+./knife lint
+```
+
+This runs [buildifier](https://github.com/bazelbuild/buildtools/tree/main/buildifier) over all `BUILD`, `WORKSPACE`, and `*.bzl` files and auto-fixes style issues. Install buildifier first if it is not on your `PATH`:
+
+```sh
+go install github.com/bazelbuild/buildtools/buildifier@latest
+```
+
+To only check for issues without modifying files, run:
+
+```sh
+./knife lint --check
+```
 
 ### Update / lock package snapshots
 

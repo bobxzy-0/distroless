@@ -21,12 +21,10 @@ All distroless Java images support both **cgroup v1** and **cgroup v2** containe
 
 The JVM flag `-XX:+UseContainerSupport` is **enabled by default** in all included Temurin builds. When active, the JVM automatically detects the cgroup version used by the host (v1 or v2) and reads the container's resource limits:
 
-| cgroup version | Paths read by JVM                              |
-| -------------- | ---------------------------------------------- |
-| v1             | `/sys/fs/cgroup/memory/memory.limit_in_bytes`  |
-|                | `/sys/fs/cgroup/cpu/cpu.cfs_quota_us`          |
-| v2             | `/sys/fs/cgroup/memory.max`                    |
-|                | `/sys/fs/cgroup/cpu.max`                       |
+| cgroup version | Paths read by JVM |
+| -------------- | ----------------- |
+| v1 | `/sys/fs/cgroup/memory/memory.limit_in_bytes`, `/sys/fs/cgroup/cpu/cpu.cfs_quota_us` |
+| v2 | `/sys/fs/cgroup/memory.max`, `/sys/fs/cgroup/cpu.max` |
 
 ### Version requirements
 
@@ -58,16 +56,17 @@ java -XX:+PrintContainerInfo -version
 
 ### Overriding container limits
 
-If you need to override the automatic sizing, pass explicit JVM flags:
-
-```dockerfile
-CMD ["/app.jar", "-Xmx512m", "-Xms256m"]
-```
-
-Or pass them via environment variable (for Spring Boot and similar frameworks):
+If you need to override the automatic sizing, pass explicit JVM flags via the `JAVA_TOOL_OPTIONS` environment variable (applied before `-jar`):
 
 ```dockerfile
 ENV JAVA_TOOL_OPTIONS="-Xmx512m -Xms256m"
+CMD ["/app.jar"]
+```
+
+Or use a fully custom `ENTRYPOINT` to pass flags directly:
+
+```dockerfile
+ENTRYPOINT ["/usr/bin/java", "-Xmx512m", "-Xms256m", "-jar"]
 CMD ["/app.jar"]
 ```
 

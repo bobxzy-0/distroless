@@ -228,6 +228,88 @@ BUILD       Dockerfile  hello.py
 
 If your project uses Distroless, send a PR to add your project here!
 
+## Building the Images from Source
+
+This section explains how to build the distroless images locally from source.
+
+### Prerequisites
+
+The images are built with [Bazel](https://bazel.build). Install Bazelisk (the recommended Bazel launcher) with one of:
+
+```sh
+# macOS
+brew install bazelisk
+
+# Linux — download the latest release binary (requires sudo)
+sudo curl -fsSL https://github.com/bazelbuild/bazelisk/releases/latest/download/bazelisk-linux-amd64 \
+  -o /usr/local/bin/bazel && sudo chmod +x /usr/local/bin/bazel
+```
+
+Bazelisk will automatically download the correct Bazel version declared in the repository.
+
+### Build all images
+
+```sh
+bazel build //...
+```
+
+### Build a specific image
+
+Targets follow the pattern `//IMAGE_NAME:VARIANT_ARCH_DISTRO`, for example:
+
+```sh
+# Build the amd64 static Debian 13 image
+bazel build //static:static_root_amd64_debian13
+
+# Build the amd64 Java 21 Debian 13 image
+bazel build //java:java21_root_amd64_debian13
+```
+
+You can list all available targets with:
+
+```sh
+bazel query //...
+```
+
+### Load a built image into the local Docker daemon
+
+Bazel produces OCI image archives. To push one into your local Docker daemon, add an [`oci_load`](https://github.com/bazel-contrib/rules_oci/blob/main/docs/load.md) rule in the relevant `BUILD` file:
+
+```starlark
+load("@rules_oci//oci:defs.bzl", "oci_load")
+
+oci_load(
+    name = "local_static",
+    image = "//static:static_root_amd64_debian13",
+    repo_tags = ["distroless/static-debian13:local"],
+)
+```
+
+Then run:
+
+```sh
+bazel run //:local_static
+docker run --rm distroless/static-debian13:local
+```
+
+### Run the tests
+
+```sh
+./knife test
+```
+
+This runs all tests tagged for the current host architecture (e.g. `amd64`). A plain `bazel test //...` will **not** run all tests because many are tagged `manual`.
+
+### Update / lock package snapshots
+
+After modifying any `*.yaml` package manifest under `common/` or `private/repos/deb/`, regenerate the lock files:
+
+```sh
+./knife lock
+```
+
+For more details on contributing, see [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## Community Discussion
 
 - [distroless-users Google Group](https://groups.google.com/forum/#!forum/distroless-users)

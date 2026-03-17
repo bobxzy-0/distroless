@@ -50,6 +50,7 @@ Debian 13 distroless images use the debian [UsrMerge](https://wiki.debian.org/Us
 | gcr.io/distroless/base-nossl-debian13 | latest, nonroot, debug, debug-nonroot | amd64, arm64, arm, s390x, ppc64le, riscv64 |
 | gcr.io/distroless/cc-debian13         | latest, nonroot, debug, debug-nonroot | amd64, arm64, arm, s390x, ppc64le, riscv64 |
 | gcr.io/distroless/java-base-debian13  | latest, nonroot, debug, debug-nonroot | amd64, arm64, s390x, ppc64le, riscv64      |
+| gcr.io/distroless/java8-debian13      | latest, nonroot, debug, debug-nonroot | amd64, arm64, s390x, ppc64le               |
 | gcr.io/distroless/java17-debian13     | latest, nonroot, debug, debug-nonroot | amd64, arm64, s390x, ppc64le, riscv64      |
 | gcr.io/distroless/java21-debian13     | latest, nonroot, debug, debug-nonroot | amd64, arm64, s390x, ppc64le, riscv64      |
 | gcr.io/distroless/java25-debian13     | latest, nonroot, debug, debug-nonroot | amd64, arm64, s390x, ppc64le, riscv64      |
@@ -226,6 +227,127 @@ BUILD       Dockerfile  hello.py
 - [BloodHound](https://github.com/SpecterOps/BloodHound) by [SpecterOps](https://specterops.io/)
 
 If your project uses Distroless, send a PR to add your project here!
+
+## Building the Images from Source
+
+This section explains how to build the distroless images locally from source.
+
+### Prerequisites
+
+The images are built with [Bazel](https://bazel.build). Install Bazelisk (the recommended Bazel launcher) with one of:
+
+```sh
+# macOS
+brew install bazelisk
+
+# Linux — download the latest release binary (requires sudo)
+sudo curl -fsSL https://github.com/bazelbuild/bazelisk/releases/latest/download/bazelisk-linux-amd64 \
+  -o /usr/local/bin/bazel && sudo chmod +x /usr/local/bin/bazel
+```
+
+Bazelisk will automatically download the correct Bazel version declared in the repository.
+
+You also need [Docker](https://docs.docker.com/get-started/get-docker/) if you want to load a built image into your local Docker daemon or run the image test suite.
+
+### Build all images
+
+```sh
+bazel build //...
+```
+
+### Build a specific image
+
+Targets follow the pattern `//IMAGE_NAME:VARIANT_ARCH_DISTRO`, for example:
+
+```sh
+# Build the amd64 static Debian 13 image
+bazel build //static:static_root_amd64_debian13
+
+# Build the amd64 Java 21 Debian 13 image
+bazel build //java:java21_root_amd64_debian13
+```
+
+You can list all available targets with:
+
+```sh
+bazel query //...
+```
+
+### Load a built image into the local Docker daemon
+
+Bazel produces OCI image archives. To push one into your local Docker daemon, add an [`oci_load`](https://github.com/bazel-contrib/rules_oci/blob/main/docs/load.md) rule in the relevant `BUILD` file:
+
+```starlark
+load("@rules_oci//oci:defs.bzl", "oci_load")
+
+oci_load(
+    name = "local_static",
+    image = "//static:static_root_amd64_debian13",
+    repo_tags = ["distroless/static-debian13:local"],
+)
+```
+
+Then run:
+
+```sh
+bazel run //:local_static
+docker run --rm distroless/static-debian13:local
+```
+
+### Run the tests
+
+```sh
+./knife test
+```
+
+This runs all tests tagged for the current host architecture (e.g. `amd64`). A plain `bazel test //...` will **not** run all tests because many are tagged `manual`.
+
+To run the tests for a single image, pass the target label directly to `bazel test`, for example:
+
+```sh
+# Run the amd64 static-debian13 image test
+bazel test //static:static_root_amd64_debian13_test
+```
+
+You can discover all test targets with:
+
+```sh
+bazel query 'kind(container_test, //...)'
+```
+
+### Lint Bazel files
+
+```sh
+./knife lint
+```
+
+This runs [buildifier](https://github.com/bazelbuild/buildtools/tree/main/buildifier) over all `BUILD`, `WORKSPACE`, and `*.bzl` files and auto-fixes style issues. Install buildifier first if it is not on your `PATH`:
+
+```sh
+go install github.com/bazelbuild/buildtools/buildifier@latest
+```
+
+To only check for issues without modifying files, run:
+
+```sh
+./knife lint --check
+```
+
+### Update / lock package snapshots
+
+After modifying any `*.yaml` package manifest under `common/` or `private/repos/deb/`, regenerate the lock files:
+
+```sh
+./knife lock
+```
+
+For more details on contributing, see [CONTRIBUTING.md](CONTRIBUTING.md).
+
+### Publish images to Google Container Registry
+
+Once images build successfully, you can push them to a GCR repository automatically from GitHub Actions. The [publish workflow](.github/workflows/publish.yaml) triggers on every push to `main` and runs `bazel run :sign_and_push --config=release` to push and sign all images.
+
+See [RELEASES.md](RELEASES.md) for the complete setup guide (GCP Workload Identity Federation, service account, and required GitHub secrets).
 
 ## Community Discussion
 

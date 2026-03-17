@@ -95,13 +95,14 @@ def java_image_index(distro, java_version, architectures):
                 ],
             )
 
-def java_image(distro, java_version, arch):
+def java_image(distro, java_version, arch, repo_suffix = "adoptium"):
     """java images from adoptium temurin deb distribution
 
     Args:
         distro: name of distribution
         java_version: version of java
         arch: the target arch
+        repo_suffix: the deb repo suffix to use (defaults to "adoptium")
     """
 
     # intermediary rule to configure jre symlinks
@@ -117,7 +118,7 @@ def java_image(distro, java_version, arch):
                 arch,
                 distro,
                 "temurin-" + java_version + "-jre",
-                "adoptium",
+                repo_suffix,
             ),
         ],
     )
@@ -135,7 +136,7 @@ def java_image(distro, java_version, arch):
                 arch,
                 distro,
                 "temurin-" + java_version + "-jdk",
-                "adoptium",
+                repo_suffix,
             ),
         ],
     )
@@ -156,7 +157,7 @@ def java_image(distro, java_version, arch):
                     arch,
                     distro,
                     "temurin-" + java_version + "-jre",
-                    "adoptium",
+                    repo_suffix,
                 )),
             },
             tars = [
@@ -182,7 +183,7 @@ def java_image(distro, java_version, arch):
                     arch,
                     distro,
                     "temurin-" + java_version + "-jdk",
-                    "adoptium",
+                    repo_suffix,
                 )),
             },
             tars = [
@@ -277,6 +278,25 @@ def java_tests(distro, java_version, arch):
                 name = "check_libharfbuzz_java" + java_version + "_" + user + "_" + distro + "_test",
                 configs = ["testdata/java_libharfbuzz.yaml"],
                 image = ":check_libharfbuzz_java" + java_version + "_" + user + "_" + distro,
+                tags = [
+                    "amd64",
+                    "manual",
+                ],
+            )
+
+        for user in USERS:
+            oci_java_image(
+                name = "check_container_support_java" + java_version + "_" + user + "_" + distro,
+                srcs = ["testdata/CheckContainerSupport.java"],
+                base = "//java:java" + java_version + "_" + user + "_amd64_" + distro,
+                main_class = "testdata.CheckContainerSupport",
+            )
+
+        for user in USERS:
+            container_structure_test(
+                name = "check_container_support_java" + java_version + "_" + user + "_" + distro + "_test",
+                configs = ["testdata/java_container_support.yaml"],
+                image = ":check_container_support_java" + java_version + "_" + user + "_" + distro,
                 tags = [
                     "amd64",
                     "manual",

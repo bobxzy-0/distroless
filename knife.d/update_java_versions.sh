@@ -25,4 +25,10 @@ function update_java_versions_debian13() {
     local major_version=$(echo "$version" | cut -d. -f 1)
     sed -i -r -e "s/${major_version}\\.[0-9]+\\.[0-9]+/${version}/g" java/testdata/java${major_version}*debian13.yaml
   done
+
+  # Java 8 uses a separate lock file (trixie_adoptium_java8)
+  local version=$(jq -r '.packages.[] | select((.arch=="amd64") and (.name=="temurin-8-jre")) | .version | split(".") | .[0:3] | join(".")' private/repos/deb/trixie_adoptium_java8.lock.json)
+  if [[ -n "$version" ]]; then
+    sed -i -r -e "s/8\\.[0-9]+\\.[0-9]+/${version}/g" java/testdata/java8*debian13.yaml
+  fi
 }

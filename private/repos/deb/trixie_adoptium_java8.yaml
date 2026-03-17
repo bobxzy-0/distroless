@@ -1,0 +1,18 @@
+# debian 13, java 8 from adoptium repositories
+# Note: temurin-8 does not support riscv64, hence the separate manifest
+version: 1
+
+sources:
+  # adoptium
+  - channel: trixie main
+    url: https://packages.adoptium.net/artifactory/deb
+
+archs:
+  - amd64
+  - arm64
+  - s390x
+  - ppc64el
+
+packages:
+  - temurin-8-jre
+  - temurin-8-jdk

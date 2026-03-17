@@ -95,13 +95,14 @@ def java_image_index(distro, java_version, architectures):
                 ],
             )
 
-def java_image(distro, java_version, arch):
+def java_image(distro, java_version, arch, repo_suffix = "adoptium"):
     """java images from adoptium temurin deb distribution
 
     Args:
         distro: name of distribution
         java_version: version of java
         arch: the target arch
+        repo_suffix: the deb repo suffix to use (defaults to "adoptium")
     """
 
     # intermediary rule to configure jre symlinks
@@ -117,7 +118,7 @@ def java_image(distro, java_version, arch):
                 arch,
                 distro,
                 "temurin-" + java_version + "-jre",
-                "adoptium",
+                repo_suffix,
             ),
         ],
     )
@@ -135,7 +136,7 @@ def java_image(distro, java_version, arch):
                 arch,
                 distro,
                 "temurin-" + java_version + "-jdk",
-                "adoptium",
+                repo_suffix,
             ),
         ],
     )
@@ -156,7 +157,7 @@ def java_image(distro, java_version, arch):
                     arch,
                     distro,
                     "temurin-" + java_version + "-jre",
-                    "adoptium",
+                    repo_suffix,
                 )),
             },
             tars = [
@@ -182,7 +183,7 @@ def java_image(distro, java_version, arch):
                     arch,
                     distro,
                     "temurin-" + java_version + "-jdk",
-                    "adoptium",
+                    repo_suffix,
                 )),
             },
             tars = [

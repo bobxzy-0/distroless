@@ -1,10 +1,10 @@
 name: update-snapshots
-on:
-  # will send emails to last editor of this cron syntax (distroless-bot)
-  schedule:
-    - cron: "35 20 * * *"
-  # allow this workflow to be manually run
-  workflow_dispatch:
+# on:
+#   # will send emails to last editor of this cron syntax (distroless-bot)
+#   schedule:
+#     - cron: "35 20 * * *"
+#   # allow this workflow to be manually run
+#   workflow_dispatch:
 
 permissions:
   contents: read
